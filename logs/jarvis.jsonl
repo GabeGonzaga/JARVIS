@@ -59,3 +59,16 @@
 {"ts": 1770039014.788584, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "user_input", "text": "jarvis qual a data do dia de amanhã?", "model": "llama3.1:latest"}
 {"ts": 1770039016.075386, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
 {"ts": 1770039016.0775769, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770044078.920646, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "hello who are you sir?", "model": "qwen3:4b"}
+{"ts": 1770044094.1079402, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "what can you do ?", "model": "qwen3:4b"}
+{"ts": 1770044133.698575, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "week", "model": "qwen3:4b"}
+{"ts": 1770044144.785795, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "tool_call", "tool": "system.now", "args": {"what": "weekday"}, "risk": "low"}
+{"ts": 1770044144.788453, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770044170.1216378, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "jarvis whats the weather like in lisbon today ?", "model": "qwen3:4b"}
+{"ts": 1770044197.187028, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "jarvis can you open a new tab on google ?", "model": "qwen3:4b"}
+{"ts": 1770044218.866913, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "tool_call", "tool": "macos.open_url", "args": {"url": "https://www.google.com"}, "risk": "low"}
+{"ts": 1770044219.000279, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "tool_result", "tool": "macos.open_url", "ok": true}
+{"ts": 1770044244.710421, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "thank you", "model": "qwen3:4b"}
+{"ts": 1770044261.4096231, "trace_id": "920440de-4aa9-4c11-a462-560969d15fb8", "event": "user_input", "text": "call me alwasy by sir", "model": "qwen3:4b"}
+{"ts": 1770044567.79291, "trace_id": "6042f6b1-ec8d-421e-8735-5ab4f9cf5294", "event": "user_input", "text": "hello", "model": "qwen3:4b"}
+{"ts": 1770044583.0545542, "trace_id": "6042f6b1-ec8d-421e-8735-5ab4f9cf5294", "event": "user_input", "text": "whats your name and functions", "model": "qwen3:4b"}
