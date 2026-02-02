@@ -30,3 +30,32 @@
 {"ts": 1769992279.368703, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "user_input", "text": "/week", "model": "llama3.1:latest"}
 {"ts": 1769992280.4923, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
 {"ts": 1769992280.5054982, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770034463.8993878, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "user_input", "text": "hello jarvis", "model": "llama3.1:latest"}
+{"ts": 1770034475.8904698, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "user_input", "text": "4+4", "model": "llama3.1:latest"}
+{"ts": 1770034501.715133, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "user_input", "text": "time", "model": "llama3.1:latest"}
+{"ts": 1770034502.803139, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_call", "tool": "system.now", "args": {"what": "time"}, "risk": "low"}
+{"ts": 1770034502.83157, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770034605.743826, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "user_input", "text": "date", "model": "llama3.1:latest"}
+{"ts": 1770034606.846447, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770034606.872386, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770034613.6294389, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "user_input", "text": "weekday", "model": "llama3.1:latest"}
+{"ts": 1770034614.668333, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770034614.683038, "trace_id": "a0cede05-9df4-4f89-868e-e811d5208611", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770035023.913918, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "user_input", "text": "hello", "model": "llama3.1:latest"}
+{"ts": 1770035031.6186209, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "user_input", "text": "whats your name", "model": "llama3.1:latest"}
+{"ts": 1770035042.623887, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "user_input", "text": "time", "model": "llama3.1:latest"}
+{"ts": 1770035043.711621, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_call", "tool": "system.now", "args": {"what": "time"}, "risk": "low"}
+{"ts": 1770035043.734743, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770035046.1857762, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "user_input", "text": "date", "model": "llama3.1:latest"}
+{"ts": 1770035047.230216, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770035047.24291, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770035049.7311099, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "user_input", "text": "weekday", "model": "llama3.1:latest"}
+{"ts": 1770035050.7766452, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770035050.799762, "trace_id": "a1aca393-b041-4549-aa49-c3f1f5feb593", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770038949.5254998, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "user_input", "text": "hello whats your name", "model": "llama3.1:latest"}
+{"ts": 1770038977.795189, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "user_input", "text": "Jarvis que dia é hoje?", "model": "llama3.1:latest"}
+{"ts": 1770038978.818676, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770038978.819233, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1770039014.788584, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "user_input", "text": "jarvis qual a data do dia de amanhã?", "model": "llama3.1:latest"}
+{"ts": 1770039016.075386, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1770039016.0775769, "trace_id": "a1013522-942d-4692-abe3-3d1fc45100b2", "event": "tool_result", "tool": "system.now", "ok": true}

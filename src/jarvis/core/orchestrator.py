@@ -38,12 +38,8 @@ class Orchestrator:
         self.registry.register(Tool("macos.open_url", macos_basic.open_url, risk="low"))
         self.registry.register(Tool("macos.create_note", macos_basic.create_note, risk="med"))
 
-        self.registry.register(
-            Tool("system.list_dir", lambda a: sys_files.list_dir(a, self.allowed_roots), risk="low")
-        )
-        self.registry.register(
-            Tool("system.read_file", lambda a: sys_files.read_file(a, self.allowed_roots), risk="low")
-        )
+        self.registry.register(Tool("system.list_dir", lambda a: sys_files.list_dir(a, self.allowed_roots), risk="low"))
+        self.registry.register(Tool("system.read_file", lambda a: sys_files.read_file(a, self.allowed_roots), risk="low"))
 
         # date/time (local wall-clock)
         self.registry.register(Tool("system.now", sys_time.now, risk="low"))
@@ -53,19 +49,33 @@ class Orchestrator:
         if not user_text:
             return ""
 
-        lower = user_text.lower()
+        cmd = user_text.lower()
 
         # local command: model switch
-        if lower.startswith("/model "):
+        if cmd.startswith("/model "):
             self.model = user_text.split(" ", 1)[1].strip()
             return f"Active model: {self.model}"
 
         # local shortcuts (no LLM)
-        if lower in {"/now", "/date", "/time"}:
-            what = {"/now": "datetime", "/date": "date", "/time": "time"}[lower]
-            return self._format_now(sys_time.now({"what": what}))
+        # - keep slash versions for terminal muscle-memory
+        # - keep bare words for GUI buttons (time/date/weekday/day)
+        shortcut_map = {
+            "/now": "datetime",
+            "/date": "date",
+            "/time": "time",
+            "/weekday": "weekday",
+            "/day": "day",
+            "now": "datetime",
+            "date": "date",
+            "time": "time",
+            "weekday": "weekday",
+            "day": "day",
+        }
+        if cmd in shortcut_map:
+            what = shortcut_map[cmd]
+            return self._format_now(sys_time.now({"what": what}), what=what)
 
-        if lower == "/tools":
+        if cmd == "/tools":
             return "\n".join(self.registry.list())
 
         log_event(self.trace, "user_input", text=user_text, model=self.model)
@@ -88,8 +98,9 @@ class Orchestrator:
             '1) {"type":"chat","content":"..."}\n'
             '2) {"type":"tool","name":"<tool_name>","args":{...},"reason":"..."}\n'
             "Rules:\n"
-            "- If the user asks for date/time/now/current time/current date, you MUST use tool system.now.\n"
-            '- Use args {"what":"datetime"} for both, {"what":"date"} for date only, {"what":"time"} for time only.\n'
+            "- If the user asks for date/time/now/current time/current date/day of week/weekday, you MUST use tool system.now.\n"
+            '- Use args {"what":"datetime"} for both, {"what":"date"} for date only, {"what":"time"} for time only,\n'
+            '- {"what":"weekday"} for weekday only, {"what":"day"} for weekday + date.\n'
             "- Only use tools from the list below and respect their args.\n"
             "Tools:\n"
             + json.dumps(tools, ensure_ascii=False)
@@ -97,7 +108,9 @@ class Orchestrator:
 
         raw = chat(self.model, [{"role": "system", "content": sys}, {"role": "user", "content": user_text}])
         parsed = _parse_json_best_effort(raw)
-        return parsed if parsed else {"type": "chat", "content": raw}
+        if not parsed:
+            return {"type": "chat", "content": raw}
+        return parsed
 
     def _tool_specs(self) -> List[Dict[str, Any]]:
         return [
@@ -127,10 +140,12 @@ class Orchestrator:
 
         log_event(self.trace, "tool_result", tool=tool_name, ok=result.get("ok", True))
 
-        # deterministic formatting for date/time
+        # Deterministic formatting for date/time so it's always correct
         if tool_name == "system.now":
-            return self._format_now(result)
+            what = str(args.get("what") or result.get("what") or "datetime").lower()
+            return self._format_now(result, what=what)
 
+        # Everything else: LLM formats tool output
         sys = "Respond in English, short and correct. Use only the tool result. Do not invent."
         msg = (
             f"User request: {user_text}\n"
@@ -139,14 +154,32 @@ class Orchestrator:
         )
         return chat(self.model, [{"role": "system", "content": sys}, {"role": "user", "content": msg}])
 
-    def _format_now(self, result: Dict[str, Any]) -> str:
-        dt = str(result.get("datetime", "")).strip()
+    def _format_now(self, result: Dict[str, Any], what: str = "datetime") -> str:
+        what = (what or "datetime").strip().lower()
+
         date_str = str(result.get("date", "")).strip()
         time_str = str(result.get("time", "")).strip()
-        tzname = str(result.get("tzname", "") or "").strip()
+        weekday = str(result.get("weekday", "")).strip()
+        day = str(result.get("day", "")).strip()
+        tzname = str(result.get("tzname", "")).strip()
+        dt_str = str(result.get("datetime", "")).strip()
 
-        line1 = f"Date & time: {dt}" + (f" ({tzname})" if tzname and tzname not in dt else "")
-        return "\n".join([line1, f"Date: {date_str}", f"Time: {time_str}"])
+        if what == "time":
+            return f"Hora: {time_str}"
+
+        if what == "date":
+            return f"Data: {date_str}"
+
+        if what == "weekday":
+            return f"Dia da semana: {weekday}"
+
+        if what == "day":
+            return f"Dia: {day}"
+
+        # datetime (default)
+        if tzname:
+            return f"Data & hora: {dt_str} ({tzname})"
+        return f"Data & hora: {dt_str}"
 
 
 def _parse_json_best_effort(text: str) -> Optional[Dict[str, Any]]:
@@ -157,11 +190,9 @@ def _parse_json_best_effort(text: str) -> Optional[Dict[str, Any]]:
 
     start = text.find("{")
     end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        return None
-
-    chunk = text[start : end + 1]
-    with suppress(Exception):
-        return json.loads(chunk)
+    if start != -1 and end != -1 and end > start:
+        chunk = text[start : end + 1]
+        with suppress(Exception):
+            return json.loads(chunk)
 
     return None
