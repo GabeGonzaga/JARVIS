@@ -1,0 +1,32 @@
+{"ts": 1769989472.6724942, "trace_id": "804eaa3e-b7db-488d-91bf-bfa553ab7797", "event": "user_input", "text": "Hello what's your name?", "model": "llama3.1:latest"}
+{"ts": 1769989487.1269498, "trace_id": "804eaa3e-b7db-488d-91bf-bfa553ab7797", "event": "user_input", "text": "nice to meet you jarvis", "model": "llama3.1:latest"}
+{"ts": 1769989508.3720582, "trace_id": "804eaa3e-b7db-488d-91bf-bfa553ab7797", "event": "user_input", "text": "would you be able to tell me the date ?", "model": "llama3.1:latest"}
+{"ts": 1769990502.964591, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "user_input", "text": "hello jarvis can you tell me the date ?", "model": "llama3.1:latest"}
+{"ts": 1769990508.059083, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_call", "tool": "system.now", "args": {}, "risk": "low"}
+{"ts": 1769990508.060906, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769990522.5870779, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "user_input", "text": "and the time ?", "model": "llama3.1:latest"}
+{"ts": 1769990524.9252381, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_call", "tool": "system.now", "args": {}, "risk": "low"}
+{"ts": 1769990524.926733, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769990552.743372, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "user_input", "text": "whats the time now ?", "model": "llama3.1:latest"}
+{"ts": 1769990555.184147, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_call", "tool": "system.now", "args": {}, "risk": "low"}
+{"ts": 1769990555.185688, "trace_id": "f4276d21-8173-44a7-baed-484118d51a61", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769991192.783492, "trace_id": "428113e9-8019-42a6-9593-8a47d027ba4f", "event": "user_input", "text": "hello jarvis how are you?", "model": "llama3.1:latest"}
+{"ts": 1769991211.226961, "trace_id": "428113e9-8019-42a6-9593-8a47d027ba4f", "event": "user_input", "text": "dont call me master please, sir is better", "model": "llama3.1:latest"}
+{"ts": 1769991232.621805, "trace_id": "428113e9-8019-42a6-9593-8a47d027ba4f", "event": "user_input", "text": "could you tell me the time please jarvis?", "model": "llama3.1:latest"}
+{"ts": 1769991233.729907, "trace_id": "428113e9-8019-42a6-9593-8a47d027ba4f", "event": "tool_call", "tool": "system.now", "args": {"what": "time"}, "risk": "low"}
+{"ts": 1769991233.743449, "trace_id": "428113e9-8019-42a6-9593-8a47d027ba4f", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769991302.986283, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "user_input", "text": "/hours", "model": "llama3.1:latest"}
+{"ts": 1769991304.127671, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "tool_call", "tool": "system.now", "args": {"what": "time"}, "risk": "low"}
+{"ts": 1769991304.141741, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769991308.484333, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "user_input", "text": "/day", "model": "llama3.1:latest"}
+{"ts": 1769991321.097852, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "user_input", "text": "what day is it of the week?", "model": "llama3.1:latest"}
+{"ts": 1769991322.228333, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "tool_call", "tool": "system.now", "args": {"what": "datetime"}, "risk": "low"}
+{"ts": 1769991322.2430909, "trace_id": "24dfdf3c-b025-4946-9148-6dbc097a4eb4", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769991823.4060411, "trace_id": "94efbca9-5d8c-4d6b-93b1-bd97d10328d9", "event": "user_input", "text": "/week", "model": "llama3.1:latest"}
+{"ts": 1769991826.371617, "trace_id": "94efbca9-5d8c-4d6b-93b1-bd97d10328d9", "event": "tool_call", "tool": "system.now", "args": {"what": "datetime"}, "risk": "low"}
+{"ts": 1769991826.3882601, "trace_id": "94efbca9-5d8c-4d6b-93b1-bd97d10328d9", "event": "tool_result", "tool": "system.now", "ok": true}
+{"ts": 1769992226.034385, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "user_input", "text": "hello how are you?", "model": "llama3.1:latest"}
+{"ts": 1769992248.0515552, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "user_input", "text": "jarvis i told you it's sir not master", "model": "llama3.1:latest"}
+{"ts": 1769992279.368703, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "user_input", "text": "/week", "model": "llama3.1:latest"}
+{"ts": 1769992280.4923, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "tool_call", "tool": "system.now", "args": {"what": "date"}, "risk": "low"}
+{"ts": 1769992280.5054982, "trace_id": "029400ae-da7e-46a1-b9f0-f327a841c79e", "event": "tool_result", "tool": "system.now", "ok": true}
