@@ -213,3 +213,5 @@ config/security.json
 __pycache__/
 *.pyc
 .DS_Store
+# local build artifacts
+bin/jarvis-auth
