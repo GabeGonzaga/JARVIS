@@ -148,7 +148,7 @@ class Orchestrator:
             '- Use args {"what":"datetime"} for both, {"what":"date"} for date only, {"what":"time"} for time only, '
             '{"what":"weekday"} for weekday only, {"what":"day"} for weekday + date.\n'
             "- For music requests and controls (play, resume, pause, stop, next, previous, skip, forward/back 15 seconds, "
-            "play song/artist/album/playlist, shuffle), you MUST use tool macos.music_control with args "
+            "clear queue, limpar fila, play song/artist/album/playlist, shuffle), you MUST use tool macos.music_control with args "
             '{"query":"<the user request>"} and keep the user words.\n'
             "- Only use tools from the list below and respect their args.\n"
             "Tools:\n"
@@ -263,6 +263,8 @@ class Orchestrator:
                 return "Sir, forward 15 seconds."
             if a == "back15":
                 return "Sir, back 15 seconds."
+            if a == "clear_queue":
+                return "Sir, queue cleared."
             return f"Sir, done: {a}"
 
         played = result.get("played") or {}
