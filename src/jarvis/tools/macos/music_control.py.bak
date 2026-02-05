@@ -1,0 +1,654 @@
+from __future__ import annotations
+
+import json
+import os
+import secrets
+import subprocess
+from contextlib import suppress
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+
+STATE_FILENAME = "music_state.json"
+INDEX_FILENAME = "music_index.json"
+
+MAX_OPTIONS = 8
+MAX_QUEUE_TRACKS = 500
+
+
+@dataclass(frozen=True)
+class Track:
+    name: str
+    artist: str
+    album: str
+
+    def display(self) -> str:
+        if self.artist and self.album:
+            return f"{self.name} - {self.artist} ({self.album})"
+        if self.artist:
+            return f"{self.name} - {self.artist}"
+        return self.name
+
+
+def _jarvis_dir() -> Path:
+    p = os.getenv("JARVIS_STATE_DIR", "~/.jarvis")
+    d = Path(p).expanduser()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _state_path() -> Path:
+    return _jarvis_dir() / STATE_FILENAME
+
+
+def _index_path() -> Path:
+    return _jarvis_dir() / INDEX_FILENAME
+
+
+def _load_json(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    with suppress(Exception):
+        return json.loads(path.read_text(encoding="utf-8"))
+    return {}
+
+
+def _save_json(path: Path, data: Dict[str, Any]) -> None:
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _normalize(s: str) -> str:
+    return (s or "").strip()
+
+
+def _norm_ci(s: str) -> str:
+    return _normalize(s).casefold()
+
+
+def _osascript(script: str) -> Tuple[int, str, str]:
+    p = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True,
+        text=True,
+    )
+    return p.returncode, (p.stdout or "").strip(), (p.stderr or "").strip()
+
+
+def _split_lines(stdout: str) -> List[str]:
+    out: List[str] = []
+    for line in (stdout or "").splitlines():
+        line = line.strip()
+        if line:
+            out.append(line)
+    return out
+
+
+def _ensure_music_running() -> None:
+    _osascript('tell application "Music" to if not (it is running) then launch')
+
+
+def _escape_applescript_string(s: str) -> str:
+    return (s or "").replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _update_index(kind: str, names: List[str]) -> None:
+    if not names:
+        return
+    idx = _load_json(_index_path())
+    bucket = idx.get(kind)
+    if not isinstance(bucket, list):
+        bucket = []
+    seen = {_norm_ci(x) for x in bucket if isinstance(x, str)}
+    for name in names:
+        key = _norm_ci(name)
+        if key and key not in seen:
+            bucket.append(name)
+            seen.add(key)
+    idx[kind] = bucket[-2000:]
+    _save_json(_index_path(), idx)
+
+
+def _exact_match(names: List[str], query: str) -> Optional[str]:
+    q = _norm_ci(query)
+    for name in names:
+        if _norm_ci(name) == q:
+            return name
+    return None
+
+
+def _applescript_find_artists(query: str, limit: int = MAX_OPTIONS) -> List[str]:
+    q = _escape_applescript_string(query)
+    script = f"""
+tell application "Music"
+    set q to "{q}"
+    try
+        set xs to (get name of artists whose name contains q)
+    on error
+        set xs to {{}}
+    end try
+    set out to ""
+    set n to 0
+    repeat with itemName in xs
+        set n to n + 1
+        set out to out & (itemName as text) & linefeed
+        if n >= {int(limit)} then exit repeat
+    end repeat
+    return out
+end tell
+"""
+    rc, out, _ = _osascript(script)
+    if rc != 0:
+        return []
+    return _split_lines(out)
+
+
+def _applescript_find_playlists(query: str, limit: int = MAX_OPTIONS) -> List[str]:
+    q = _escape_applescript_string(query)
+    script = f"""
+tell application "Music"
+    set q to "{q}"
+    try
+        set xs to (get name of playlists whose name contains q)
+    on error
+        set xs to {{}}
+    end try
+    set out to ""
+    set n to 0
+    repeat with itemName in xs
+        set n to n + 1
+        set out to out & (itemName as text) & linefeed
+        if n >= {int(limit)} then exit repeat
+    end repeat
+    return out
+end tell
+"""
+    rc, out, _ = _osascript(script)
+    if rc != 0:
+        return []
+    return _split_lines(out)
+
+
+def _applescript_find_albums(query: str, limit: int = MAX_OPTIONS) -> List[str]:
+    q = _escape_applescript_string(query)
+    script = f"""
+tell application "Music"
+    set q to "{q}"
+    try
+        set xs to (get name of albums whose name contains q)
+    on error
+        set xs to {{}}
+    end try
+    set out to ""
+    set n to 0
+    repeat with itemName in xs
+        set n to n + 1
+        set out to out & (itemName as text) & linefeed
+        if n >= {int(limit)} then exit repeat
+    end repeat
+    return out
+end tell
+"""
+    rc, out, _ = _osascript(script)
+    if rc != 0:
+        return []
+    return _split_lines(out)
+
+
+def _applescript_find_tracks(query: str, limit: int = MAX_OPTIONS) -> List[Track]:
+    q = _escape_applescript_string(query)
+    script = f"""
+tell application "Music"
+    set q to "{q}"
+    set out to ""
+    set n to 0
+    try
+        set xs to (tracks of library playlist 1 whose name contains q)
+    on error
+        set xs to {{}}
+    end try
+    repeat with t in xs
+        set n to n + 1
+        set out to out & (name of t) & "||" & (artist of t) & "||" & (album of t) & linefeed
+        if n >= {int(limit)} then exit repeat
+    end repeat
+    return out
+end tell
+"""
+    rc, out, _ = _osascript(script)
+    if rc != 0:
+        return []
+    tracks: List[Track] = []
+    for line in _split_lines(out):
+        parts = line.split("||")
+        name = (parts[0] if len(parts) > 0 else "").strip()
+        artist = (parts[1] if len(parts) > 1 else "").strip()
+        album = (parts[2] if len(parts) > 2 else "").strip()
+        if name:
+            tracks.append(Track(name=name, artist=artist, album=album))
+    return tracks
+
+
+def _applescript_find_artist_names_from_tracks(query: str, limit: int = MAX_OPTIONS) -> List[str]:
+    q = _escape_applescript_string(query)
+    script = f"""
+tell application "Music"
+    set q to "{q}"
+    set out to ""
+    set n to 0
+    try
+        set xs to (tracks of library playlist 1 whose artist contains q)
+    on error
+        set xs to {{}}
+    end try
+    repeat with t in xs
+        set n to n + 1
+        set out to out & (artist of t) & linefeed
+        if n >= {int(limit)} then exit repeat
+    end repeat
+    return out
+end tell
+"""
+    rc, out, _ = _osascript(script)
+    if rc != 0:
+        return []
+    seen: set[str] = set()
+    unique: List[str] = []
+    for name in _split_lines(out):
+        key = _norm_ci(name)
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(name)
+    return unique
+
+
+def _infer_kind(query: str) -> Tuple[str, str]:
+    q = _normalize(query)
+
+    artists = _applescript_find_artists(q, limit=MAX_OPTIONS)
+    _update_index("artists", artists)
+    m = _exact_match(artists, q)
+    if m:
+        return "artist", m
+    if len(artists) == 1:
+        return "artist", artists[0]
+
+    artists_from_tracks = _applescript_find_artist_names_from_tracks(q, limit=MAX_OPTIONS)
+    if artists_from_tracks:
+        m2 = _exact_match(artists_from_tracks, q)
+        return "artist", (m2 or artists_from_tracks[0])
+
+    playlists = _applescript_find_playlists(q, limit=MAX_OPTIONS)
+    _update_index("playlists", playlists)
+    m = _exact_match(playlists, q)
+    if m:
+        return "playlist", m
+    if len(playlists) == 1:
+        return "playlist", playlists[0]
+
+    albums = _applescript_find_albums(q, limit=MAX_OPTIONS)
+    _update_index("albums", albums)
+    m = _exact_match(albums, q)
+    if m:
+        return "album", m
+    if len(albums) == 1:
+        return "album", albums[0]
+
+    return "song", q
+
+
+def _is_shuffle_query(q: str) -> bool:
+    qc = _norm_ci(q)
+    return any(k in qc for k in ["shuffle", "aleatorio", "aleatório", "random", "embaralhar"])
+
+
+def _strip_shuffle(q: str) -> str:
+    out = q
+    for k in ["shuffle", "aleatorio", "aleatório", "random", "embaralhar"]:
+        out = out.replace(k, " ")
+        out = out.replace(k.title(), " ")
+        out = out.replace(k.upper(), " ")
+    return " ".join(out.split())
+
+
+def _control_action(q: str) -> Optional[str]:
+    qc = _norm_ci(q)
+    if qc in {"play", "resume", "continue"}:
+        return "play"
+    if qc in {"pause", "stop"}:
+        return "pause"
+    if qc in {"toggle", "playpause", "play/pause"}:
+        return "toggle"
+    if qc in {"next", "skip", "seguinte"}:
+        return "next"
+    if qc in {"prev", "previous", "anterior", "back"}:
+        return "prev"
+    if any(k in qc for k in ["forward15", "forward 15", "avancar 15", "avançar 15", "+15", "forward 15s"]):
+        return "forward15"
+    if any(k in qc for k in ["back15", "back 15", "recuar 15", "retroceder 15", "-15", "back 15s"]):
+        return "back15"
+    return None
+
+
+def _run_control(action: str) -> Dict[str, Any]:
+    _ensure_music_running()
+    if action == "play":
+        script = 'tell application "Music" to play'
+    elif action == "pause":
+        script = 'tell application "Music" to pause'
+    elif action == "toggle":
+        script = 'tell application "Music" to playpause'
+    elif action == "next":
+        script = 'tell application "Music" to next track'
+    elif action == "prev":
+        script = 'tell application "Music" to previous track'
+    elif action == "forward15":
+        script = 'tell application "Music" to set player position to (player position + 15)'
+    elif action == "back15":
+        script = 'tell application "Music" to set player position to (player position - 15)'
+    else:
+        return {"ok": False, "error": "Acao desconhecida", "error_code": "unknown_action"}
+
+    rc, out, err = _osascript(script)
+    return {"ok": rc == 0, "action": action, "stdout": out, "stderr": err}
+
+
+def _play_artist(artist: str, shuffle: bool) -> Dict[str, Any]:
+    _ensure_music_running()
+    a = _escape_applescript_string(artist)
+    sh = "true" if shuffle else "false"
+    script = f"""
+tell application "Music"
+    set shuffle enabled to {sh}
+    play (some track of (tracks of library playlist 1 whose artist contains "{a}"))
+end tell
+"""
+    rc, out, err = _osascript(script)
+    return {"ok": rc == 0, "kind": "artist", "played": artist, "stdout": out, "stderr": err}
+
+
+def _play_album(album: str, shuffle: bool, artist: Optional[str] = None) -> Dict[str, Any]:
+    _ensure_music_running()
+    alb = _escape_applescript_string(album)
+    sh = "true" if shuffle else "false"
+
+    if artist:
+        art = _escape_applescript_string(artist)
+        filter_expr = f'(tracks of library playlist 1 whose album contains "{alb}" and artist contains "{art}")'
+        played_label = f"{album} (de {artist})"
+    else:
+        filter_expr = f'(tracks of library playlist 1 whose album contains "{alb}")'
+        played_label = album
+
+    script = f"""
+tell application "Music"
+    set shuffle enabled to {sh}
+    set xs to {filter_expr}
+    if (count of xs) is 0 then error "no_match"
+    set n to 0
+    set firstTrack to missing value
+    repeat with t in xs
+        set n to n + 1
+        if n is 1 then set firstTrack to t
+        if n >= {int(MAX_QUEUE_TRACKS)} then exit repeat
+    end repeat
+    play firstTrack
+end tell
+"""
+    rc, out, err = _osascript(script)
+    if rc != 0:
+        return {"ok": False, "error": "Album nao encontrado", "error_code": "not_found", "stderr": err}
+    return {"ok": True, "kind": "album", "played": played_label, "stdout": out, "stderr": err}
+
+
+def _play_playlist(playlist: str, shuffle: bool, start_song: Optional[str] = None) -> Dict[str, Any]:
+    _ensure_music_running()
+    pl = _escape_applescript_string(playlist)
+    sh = "true" if shuffle else "false"
+
+    if start_song:
+        s = _escape_applescript_string(start_song)
+        script = f"""
+tell application "Music"
+    set shuffle enabled to {sh}
+    set p to first playlist whose name contains "{pl}"
+    set t to first track of p whose name contains "{s}"
+    play t
+end tell
+"""
+        rc, out, err = _osascript(script)
+        if rc != 0:
+            return {"ok": False, "error": "Playlist ou musica inicial nao encontrada", "error_code": "not_found"}
+        return {
+            "ok": True,
+            "kind": "playlist",
+            "played": f"{playlist} (a partir de {start_song})",
+            "stdout": out,
+            "stderr": err,
+        }
+
+    script = f"""
+tell application "Music"
+    set shuffle enabled to {sh}
+    play (first playlist whose name contains "{pl}")
+end tell
+"""
+    rc, out, err = _osascript(script)
+    if rc != 0:
+        return {"ok": False, "error": "Playlist nao encontrada", "error_code": "not_found"}
+    return {"ok": True, "kind": "playlist", "played": playlist, "stdout": out, "stderr": err}
+
+
+def _play_track(track: Track) -> Dict[str, Any]:
+    _ensure_music_running()
+    t = _escape_applescript_string(track.name)
+    a = _escape_applescript_string(track.artist)
+    alb = _escape_applescript_string(track.album)
+
+    script = f"""
+tell application "Music"
+    play (some track of (tracks of library playlist 1 whose name is "{t}" and artist is "{a}" and album is "{alb}"))
+end tell
+"""
+    rc, out, err = _osascript(script)
+    if rc == 0:
+        return {"ok": True, "kind": "song", "played": track.display(), "stdout": out, "stderr": err}
+
+    script2 = f"""
+tell application "Music"
+    play (some track of (tracks of library playlist 1 whose name contains "{t}"))
+end tell
+"""
+    rc2, out2, err2 = _osascript(script2)
+    if rc2 != 0:
+        return {"ok": False, "error": "Musica nao encontrada", "error_code": "not_found", "stderr": err2}
+    return {"ok": True, "kind": "song", "played": track.display(), "stdout": out2, "stderr": err2}
+
+
+def _make_token() -> str:
+    return secrets.token_hex(4)
+
+
+def _save_choice_state(kind: str, query: str, shuffle: bool, options: List[Any]) -> str:
+    token = _make_token()
+    payload = {"pending": True, "token": token, "kind": kind, "query": query, "shuffle": bool(shuffle), "options": options}
+    _save_json(_state_path(), payload)
+    return token
+
+
+def _clear_choice_state() -> None:
+    _save_json(_state_path(), {"pending": False})
+
+
+def _load_choice_state() -> Dict[str, Any]:
+    state = _load_json(_state_path())
+    if state.get("pending") is True:
+        return state
+    return {"pending": False}
+
+
+def _options_display_from_tracks(tracks: List[Track]) -> List[str]:
+    return [t.display() for t in tracks]
+
+
+def _extract_after_prefix(q: str, prefixes: List[str]) -> Optional[str]:
+    txt = _normalize(q)
+    low = txt.casefold()
+    for p in prefixes:
+        plow = p.casefold()
+        if low.startswith(plow):
+            return txt[len(p) :].strip()
+    return None
+
+
+def _parse_playlist_start(txt: str) -> Tuple[str, Optional[str]]:
+    s = _normalize(txt)
+    low = s.casefold()
+    markers = [" from ", " starting ", " a partir de ", " desde "]
+    for m in markers:
+        idx = low.find(m.strip())
+        if idx != -1:
+            left = s[:idx].strip()
+            right = s[idx + len(m.strip()) :].strip()
+            if left and right:
+                return left, right
+    for m in markers:
+        idx2 = low.find(m)
+        if idx2 != -1:
+            left2 = s[:idx2].strip()
+            right2 = s[idx2 + len(m) :].strip()
+            if left2 and right2:
+                return left2, right2
+    return s, None
+
+
+def _split_album_by_artist(txt: str) -> Tuple[str, Optional[str]]:
+    s = _normalize(txt)
+    low = s.casefold()
+    for sep in [" by ", " de "]:
+        idx = low.find(sep)
+        if idx != -1:
+            left = s[:idx].strip()
+            right = s[idx + len(sep) :].strip()
+            if left and right:
+                return left, right
+    return s, None
+
+
+def music_control(args: Dict[str, Any]) -> Dict[str, Any]:
+    query_raw = _normalize(str(args.get("query", "")))
+    if not query_raw:
+        return {"ok": False, "error": "Diga o que devo tocar", "error_code": "empty_query"}
+
+    if query_raw.isdigit():
+        state = _load_choice_state()
+        if not state.get("pending"):
+            return {"ok": False, "error": "Sem escolha pendente", "error_code": "no_pending_choice"}
+        pick = int(query_raw)
+        options = state.get("options")
+        kind = str(state.get("kind") or "")
+        shuffle = bool(state.get("shuffle", False))
+        if not isinstance(options, list) or pick < 1 or pick > len(options):
+            return {"ok": False, "error": "Escolha invalida", "error_code": "invalid_pick"}
+
+        chosen = options[pick - 1]
+        _clear_choice_state()
+
+        if kind == "artist":
+            return _play_artist(str(chosen), shuffle=shuffle)
+        if kind == "album":
+            return _play_album(str(chosen), shuffle=shuffle)
+        if kind == "playlist":
+            return _play_playlist(str(chosen), shuffle=shuffle)
+        if kind == "song" and isinstance(chosen, dict):
+            t = Track(
+                name=str(chosen.get("name", "")),
+                artist=str(chosen.get("artist", "")),
+                album=str(chosen.get("album", "")),
+            )
+            return _play_track(t)
+
+        return {"ok": False, "error": "Escolha invalida", "error_code": "invalid_pick"}
+
+    action = _control_action(query_raw)
+    if action:
+        return _run_control(action)
+
+    q = query_raw
+    for p in ["jarvis", "play", "toca", "tocar", "ponha", "poe", "põe", "mete", "reproduz", "reproduzir"]:
+        if _norm_ci(q).startswith(p.casefold() + " "):
+            q = q[len(p) :].strip()
+
+    shuffle = _is_shuffle_query(q)
+    if shuffle:
+        q = _strip_shuffle(q)
+
+    artist_q = _extract_after_prefix(q, ["artist ", "artista ", "songs by ", "musicas de ", "músicas de "])
+    if artist_q:
+        artists = _applescript_find_artists(artist_q, limit=MAX_OPTIONS)
+        _update_index("artists", artists)
+        m = _exact_match(artists, artist_q)
+        if m:
+            return _play_artist(m, shuffle=shuffle)
+        if len(artists) == 1:
+            return _play_artist(artists[0], shuffle=shuffle)
+        if len(artists) > 1:
+            _save_choice_state("artist", artist_q, shuffle, artists)
+            return {"ok": True, "needs_choice": True, "kind": "artist", "query": artist_q, "options": artists}
+        return _play_artist(artist_q, shuffle=shuffle)
+
+    pl_q = _extract_after_prefix(q, ["playlist "])
+    if pl_q:
+        pl_name, start_song = _parse_playlist_start(pl_q)
+        playlists = _applescript_find_playlists(pl_name, limit=MAX_OPTIONS)
+        _update_index("playlists", playlists)
+        m = _exact_match(playlists, pl_name)
+        if m:
+            return _play_playlist(m, shuffle=shuffle, start_song=start_song)
+        if len(playlists) == 1:
+            return _play_playlist(playlists[0], shuffle=shuffle, start_song=start_song)
+        if len(playlists) > 1:
+            _save_choice_state("playlist", pl_name, shuffle, playlists)
+            return {"ok": True, "needs_choice": True, "kind": "playlist", "query": pl_name, "options": playlists}
+        return {"ok": False, "error": "Playlist nao encontrada", "error_code": "not_found"}
+
+    alb_q = _extract_after_prefix(q, ["album ", "álbum "])
+    if alb_q:
+        album_name, artist_name = _split_album_by_artist(alb_q)
+        albums = _applescript_find_albums(album_name, limit=MAX_OPTIONS)
+        _update_index("albums", albums)
+        m = _exact_match(albums, album_name)
+        if m:
+            return _play_album(m, shuffle=shuffle, artist=artist_name)
+        if len(albums) == 1:
+            return _play_album(albums[0], shuffle=shuffle, artist=artist_name)
+        if len(albums) > 1:
+            _save_choice_state("album", album_name, shuffle, albums)
+            return {"ok": True, "needs_choice": True, "kind": "album", "query": album_name, "options": albums}
+        return _play_album(album_name, shuffle=shuffle, artist=artist_name)
+
+    kind, inferred = _infer_kind(q)
+    if kind == "artist":
+        return _play_artist(inferred, shuffle=shuffle)
+    if kind == "playlist":
+        return _play_playlist(inferred, shuffle=shuffle)
+    if kind == "album":
+        return _play_album(inferred, shuffle=shuffle)
+
+    tracks = _applescript_find_tracks(inferred, limit=MAX_OPTIONS)
+    if not tracks:
+        return {"ok": False, "error": "Musica nao encontrada", "error_code": "not_found"}
+    if len(tracks) == 1:
+        return _play_track(tracks[0])
+
+    option_dicts = [{"name": t.name, "artist": t.artist, "album": t.album} for t in tracks]
+    _save_choice_state("song", inferred, shuffle=False, options=option_dicts)
+    return {
+        "ok": True,
+        "needs_choice": True,
+        "kind": "song",
+        "query": inferred,
+        "options": _options_display_from_tracks(tracks),
+    }

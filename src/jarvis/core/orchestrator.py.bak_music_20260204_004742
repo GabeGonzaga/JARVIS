@@ -1,0 +1,230 @@
+# src/jarvis/core/orchestrator.py
+# sourcery skip: use-named-expression, reintroduce-else, assign-if-exp
+from __future__ import annotations
+
+import json
+from contextlib import suppress
+from typing import Any, Dict, List, Optional
+
+from jarvis.core.config import load_settings
+from jarvis.core.registry import Tool, ToolRegistry
+from jarvis.core.security import SecurityManager
+from jarvis.llm.ollama import chat
+from jarvis.observability.logging import log_event, new_trace
+from jarvis.tools.macos import basic as macos_basic
+from jarvis.tools.macos import shortcuts as macos_shortcuts
+from jarvis.tools.system import files as sys_files
+from jarvis.tools.system import time as sys_time
+
+
+def _safe_import_weather() -> tuple[Optional[Any], Optional[Any]]:
+    ipma_fn = None
+    apple_fn = None
+    with suppress(Exception):
+        from jarvis.tools.weather.ipma import weather_ipma  # type: ignore
+
+        ipma_fn = weather_ipma
+    with suppress(Exception):
+        from jarvis.tools.weather.apple import weather_apple  # type: ignore
+
+        apple_fn = weather_apple
+    return ipma_fn, apple_fn
+
+
+class Orchestrator:
+    def __init__(self) -> None:
+        self.trace = new_trace()
+        self.settings = load_settings()
+
+        llm_cfg = self.settings.get("llm", {})
+        self.model = llm_cfg.get("chat_model") or llm_cfg.get("model") or "qwen3:4b-instruct"
+        self.router_model = llm_cfg.get("router_model") or self.model
+
+        self.allowed_roots = self.settings.get("file_access", {}).get("allowed_roots", ["~"])
+        self.perms = self.settings.get("tool_permissions", {})
+
+        self.security = SecurityManager(
+            auth_window_seconds=int(self.settings.get("security", {}).get("auth_window_seconds", 60))
+        )
+
+        self.registry = ToolRegistry()
+        self._has_weather_ipma = False
+        self._has_weather_apple = False
+        self._register_tools()
+
+    def _register_tools(self) -> None:
+        # macOS basics
+        self.registry.register(Tool("macos.open_app", macos_basic.open_app, risk="med"))
+        self.registry.register(Tool("macos.open_url", macos_basic.open_url, risk="low"))
+        self.registry.register(Tool("macos.create_note", macos_basic.create_note, risk="med"))
+
+        # macOS Shortcuts
+        self.registry.register(Tool("macos.list_shortcuts", macos_shortcuts.list_shortcuts, risk="low"))
+        self.registry.register(Tool("macos.run_shortcut", macos_shortcuts.run_shortcut, risk="med"))
+
+        # filesystem
+        self.registry.register(Tool("system.list_dir", lambda a: sys_files.list_dir(a, self.allowed_roots), risk="low"))
+        self.registry.register(Tool("system.read_file", lambda a: sys_files.read_file(a, self.allowed_roots), risk="low"))
+
+        # date/time
+        self.registry.register(Tool("system.now", sys_time.now, risk="low"))
+
+        # weather (optional)
+        ipma_fn, apple_fn = _safe_import_weather()
+        if ipma_fn is not None:
+            self.registry.register(Tool("weather.ipma", ipma_fn, risk="low"))
+            self._has_weather_ipma = True
+        if apple_fn is not None:
+            self.registry.register(Tool("weather.apple", apple_fn, risk="low"))
+            self._has_weather_apple = True
+
+    def handle(self, user_text: str) -> str:
+        user_text = user_text.strip()
+        if not user_text:
+            return ""
+
+        cmd = user_text.lower()
+
+        if cmd.startswith("/model "):
+            self.model = user_text.split(" ", 1)[1].strip() or self.model
+            return f"Active model: {self.model}"
+
+        if cmd.startswith("/router "):
+            self.router_model = user_text.split(" ", 1)[1].strip() or self.router_model
+            return f"Active router model: {self.router_model}"
+
+        shortcut_map = {
+            "/now": "datetime",
+            "/date": "date",
+            "/time": "time",
+            "/weekday": "weekday",
+            "/day": "day",
+            "now": "datetime",
+            "date": "date",
+            "time": "time",
+            "weekday": "weekday",
+            "day": "day",
+        }
+        if cmd in shortcut_map:
+            what = shortcut_map[cmd]
+            return self._format_now(sys_time.now({"what": what}), what=what)
+
+        if cmd == "/tools":
+            return "\n".join(self.registry.list())
+
+        log_event(self.trace, "user_input", text=user_text, model=self.model)
+
+        decision = self._decide(user_text)
+        if decision.get("type") != "tool":
+            return str(decision.get("content") or "")
+
+        tool_name = str(decision.get("name", "")).strip()
+        args = decision.get("args") or {}
+        return self._run_tool_flow(user_text, tool_name, args)
+
+    def _decide(self, user_text: str) -> Dict[str, Any]:
+        tools = self._tool_specs()
+
+        sys_prompt = (
+            "You are JARVIS. Your name is JARVIS. When asked your name, answer: 'My name is JARVIS.'\n"
+            "Always respond in JSON only (no markdown, no extra text).\n"
+            "Choose exactly one:\n"
+            '1) {"type":"chat","content":"..."}\n'
+            '2) {"type":"tool","name":"<tool_name>","args":{...},"reason":"..."}\n'
+            "Rules:\n"
+            "- If the user asks for date/time/now/current time/current date/day of week/weekday, you MUST use tool system.now.\n"
+            '- Use args {"what":"datetime"} for both, {"what":"date"} for date only, {"what":"time"} for time only,\n'
+            '- {"what":"weekday"} for weekday only, {"what":"day"} for weekday + date.\n'
+            "- Only use tools from the list below and respect their args.\n"
+            "Tools:\n"
+            + json.dumps(tools, ensure_ascii=False)
+        )
+
+        raw = chat(self.router_model, [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_text}])
+        parsed = _parse_json_best_effort(raw)
+        if parsed is None:
+            return {"type": "chat", "content": raw}
+        return parsed
+
+    def _tool_specs(self) -> List[Dict[str, Any]]:
+        specs: List[Dict[str, Any]] = [
+            {"name": "macos.open_app", "args": {"app": "string"}, "risk": "med"},
+            {"name": "macos.open_url", "args": {"url": "string"}, "risk": "low"},
+            {"name": "macos.create_note", "args": {"title": "string", "body": "string"}, "risk": "med"},
+            {"name": "macos.list_shortcuts", "args": {}, "risk": "low"},
+            {"name": "macos.run_shortcut", "args": {"name": "string", "input": "string"}, "risk": "med"},
+            {"name": "system.list_dir", "args": {"path": "string"}, "risk": "low"},
+            {"name": "system.read_file", "args": {"path": "string"}, "risk": "low"},
+            {"name": "system.now", "args": {"what": "string"}, "risk": "low"},
+        ]
+        if self._has_weather_ipma:
+            specs.append({"name": "weather.ipma", "args": {"query": "string"}, "risk": "low"})
+        if self._has_weather_apple:
+            specs.append({"name": "weather.apple", "args": {"query": "string"}, "risk": "low"})
+        return specs
+
+    def _run_tool_flow(self, user_text: str, tool_name: str, args: Dict[str, Any]) -> str:
+        if not self.perms.get(tool_name, False):
+            return f"Blocked by permissions: {tool_name}"
+
+        tool = self.registry.get(tool_name)
+        log_event(self.trace, "tool_call", tool=tool_name, args=args, risk=tool.risk)
+
+        if tool.risk in ("med", "high"):
+            self.security.authorize(f"{tool_name} | {user_text}")
+
+        try:
+            result = tool.run(args)
+        except Exception as e:
+            log_event(self.trace, "tool_error", tool=tool_name, error=str(e))
+            return f"Tool error ({tool_name}): {e}"
+
+        log_event(self.trace, "tool_result", tool=tool_name, ok=result.get("ok", True))
+
+        if tool_name == "system.now":
+            what = str(args.get("what") or result.get("what") or "datetime").lower()
+            return self._format_now(result, what=what)
+
+        sys_prompt = "Respond in English, short and correct. Use only the tool result. Do not invent."
+        msg = (
+            f"User request: {user_text}\n"
+            f"Tool: {tool_name}\n"
+            f"Result (JSON): {json.dumps(result, ensure_ascii=False)}"
+        )
+        return chat(self.model, [{"role": "system", "content": sys_prompt}, {"role": "user", "content": msg}])
+
+    def _format_now(self, result: Dict[str, Any], what: str = "datetime") -> str:
+        what = (what or "datetime").strip().lower()
+
+        date_str = str(result.get("date", "")).strip()
+        time_str = str(result.get("time", "")).strip()
+        weekday = str(result.get("weekday", "")).strip()
+        day = str(result.get("day", "")).strip()
+        tzname = str(result.get("tzname", "")).strip()
+        dt_str = str(result.get("datetime", "")).strip()
+
+        if what == "time":
+            return f"Hora: {time_str}"
+        if what == "date":
+            return f"Data: {date_str}"
+        if what == "weekday":
+            return f"Dia da semana: {weekday}"
+        if what == "day":
+            return f"Dia: {day}"
+        return f"Data & hora: {dt_str} ({tzname})" if tzname else f"Data & hora: {dt_str}"
+
+
+def _parse_json_best_effort(text: str) -> Optional[Dict[str, Any]]:
+    text = text.strip()
+
+    with suppress(Exception):
+        return json.loads(text)
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        chunk = text[start : end + 1]
+        with suppress(Exception):
+            return json.loads(chunk)
+
+    return None

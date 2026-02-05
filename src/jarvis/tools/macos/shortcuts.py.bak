@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import shlex
+import subprocess
+import tempfile
+from typing import Any, Dict, Optional
+
+
+def _run(cmd: list[str], timeout: int = 90) -> Dict[str, Any]:
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+    except FileNotFoundError as e:
+        return {"ok": False, "error": f"command not found: {cmd[0]}", "detail": str(e), "cmd": cmd}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timeout", "cmd": cmd}
+    except Exception as e:
+        return {"ok": False, "error": "subprocess_error", "detail": str(e), "cmd": cmd}
+
+    return {
+        "ok": p.returncode == 0,
+        "returncode": p.returncode,
+        "stdout": (p.stdout or "").strip(),
+        "stderr": (p.stderr or "").strip(),
+        "cmd": cmd,
+    }
+
+
+def list_shortcuts(_: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    res = _run(["shortcuts", "list"])
+    if not res.get("ok"):
+        return res
+    lines = [ln.strip() for ln in (res.get("stdout") or "").splitlines() if ln.strip()]
+    return {"ok": True, "shortcuts": lines}
+
+
+def run_shortcut(args: Dict[str, Any]) -> Dict[str, Any]:
+    name = str(args.get("name", "")).strip()
+    if not name:
+        return {"ok": False, "error": "missing_arg:name"}
+
+    shortcut_input = args.get("input", None)
+    input_str: Optional[str] = None if shortcut_input is None else str(shortcut_input)
+
+    # 1) Shortcuts CLI (expects --input-path, not --input)
+    cli_cmd = ["shortcuts", "run", name]
+
+    tmp_path: Optional[str] = None
+    if input_str is not None and input_str != "":
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
+            f.write(input_str)
+            tmp_path = f.name
+        cli_cmd += ["--input-path", tmp_path]
+
+    cli = _run(cli_cmd)
+    if cli.get("ok"):
+        return {
+            "ok": True,
+            "via": "shortcuts_cli",
+            "name": name,
+            "input": input_str,
+            "stdout": cli.get("stdout", ""),
+            "stderr": cli.get("stderr", ""),
+        }
+
+    # 2) Fallback: AppleScript (string input supported)
+    if input_str is None:
+        ascript = f'tell application "Shortcuts Events" to run shortcut {shlex.quote(name)}'
+    else:
+        esc_name = name.replace('"', '\\"')
+        esc_in = input_str.replace('"', '\\"')
+        ascript = f'tell application "Shortcuts Events" to run shortcut "{esc_name}" with input "{esc_in}"'
+
+    asr = _run(["osascript", "-e", ascript])
+    if asr.get("ok"):
+        return {"ok": True, "via": "osascript", "name": name, "input": input_str}
+
+    return {
+        "ok": False,
+        "error": "failed_to_run_shortcut",
+        "name": name,
+        "input": input_str,
+        "shortcuts_cli": cli,
+        "osascript": asr,
+    }
