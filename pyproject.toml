@@ -13,3 +13,5 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["jarvis*"]
+[project.scripts]
+jarvis = "jarvis.apps.launcher:main"

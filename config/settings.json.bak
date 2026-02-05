@@ -1,0 +1,29 @@
+{
+  "llm": {
+    "provider": "ollama",
+    "router_model": "qwen2.5:1.5b",
+    "chat_model": "qwen2.5:14b"
+  },
+  "security": {
+    "require_master_password": true,
+    "auth_window_seconds": 60
+  },
+  "file_access": {
+    "allowed_roots": ["~/Desktop", "~/Documents"]
+  },
+  "tool_permissions": {
+    "macos.open_app": true,
+    "macos.open_url": true,
+    "macos.create_note": true,
+
+    "macos.run_shortcut": true,
+    "macos.list_shortcuts": true,
+
+    "system.list_dir": true,
+    "system.read_file": true,
+    "system.now": true,
+
+    "system.write_file": false,
+    "system.delete_file": false
+  }
+}
