@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from contextlib import suppress
 from typing import Any, Dict, List, Optional
 
@@ -14,6 +15,7 @@ from jarvis.tools.macos import music_control as macos_music
 from jarvis.tools.macos import shortcuts as macos_shortcuts
 from jarvis.tools.system import files as sys_files
 from jarvis.tools.system import time as sys_time
+from jarvis.tools.translation import translator
 
 
 def _safe_import_weather() -> tuple[Optional[Any], Optional[Any]]:
@@ -53,6 +55,41 @@ class Orchestrator:
         self.memory: List[Dict[str, str]] = []
         self._pending_music: Dict[str, Any] = {}
 
+        # Language settings
+        self.current_language = self.settings.get("language", translator.DEFAULT_LANGUAGE)
+        self.translation_model = llm_cfg.get("translation_model") or "gemma2:2b"
+
+        # -------------------------
+        # Permissions policy (fix)
+        # -------------------------
+        # Default policy:
+        # - If tool_permissions has an explicit boolean for a tool, that wins.
+        # - Otherwise: allow low-risk tools by default.
+        # - For med/high: allow only if on allowlist (and med/high still triggers SecurityManager auth).
+        allow_from_settings = self.perms.get("__web_allowlist__", [])
+        self.web_allowlist = set(allow_from_settings) if isinstance(allow_from_settings, list) else set()
+
+        # Baseline allowlist for the web UI
+        self.web_allowlist.update(
+            {
+                "weather.ipma",
+                "weather.apple",
+                "macos.open_app",
+                "macos.open_url",
+                "macos.create_note",
+                "macos.music_control",
+                "macos.list_shortcuts",
+                "macos.run_shortcut",
+                "system.list_dir",
+                "system.read_file",
+                "system.now",
+            }
+        )
+
+        # Optional env overrides
+        self.allow_all_tools = os.getenv("JARVIS_ALLOW_ALL_TOOLS", "0") == "1"
+        self.allow_high_risk = os.getenv("JARVIS_ALLOW_HIGH_RISK", "0") == "1"
+
         self._register_tools()
 
     def _register_tools(self) -> None:
@@ -82,6 +119,12 @@ class Orchestrator:
         user_text = user_text.strip()
         if not user_text:
             return ""
+
+        # Check if user wants to change language
+        new_lang = translator._detect_language_preference(user_text)
+        if new_lang:
+            self.current_language = new_lang
+            return translator.format_language_change_response(new_lang)
 
         cmd = user_text.lower().strip()
 
@@ -119,12 +162,16 @@ class Orchestrator:
         if decision.get("type") != "tool":
             content = str(decision.get("content") or "")
             self._remember("assistant", content)
+            if self.current_language != "pt":
+                content = translator.translate_text(content, self.current_language, self.translation_model)
             return content
 
         tool_name = str(decision.get("name", "")).strip()
         args = decision.get("args") or {}
         out = self._run_tool_flow(user_text, tool_name, args)
         self._remember("assistant", out)
+        if self.current_language != "pt":
+            out = translator.translate_text(out, self.current_language, self.translation_model)
         return out
 
     def _remember(self, role: str, content: str) -> None:
@@ -183,35 +230,81 @@ class Orchestrator:
             specs.append({"name": "weather.apple", "args": {"query": "string"}, "risk": "low"})
         return specs
 
-    def _run_tool_flow(self, user_text: str, tool_name: str, args: Dict[str, Any]) -> str:
-        if not self.perms.get(tool_name, False):
-            return f"Sir, blocked by permissions: {tool_name}"
+    def _tool_is_allowed(self, tool_name: str, risk: str) -> bool:
+        name = (tool_name or "").strip()
+        key = name.lower()
 
-        tool = self.registry.get(tool_name)
-        log_event(self.trace, "tool_call", tool=tool_name, args=args, risk=tool.risk)
+        if self.allow_all_tools:
+            return True
+
+        # Explicit per-tool override in settings wins
+        if name in self.perms and isinstance(self.perms[name], bool):
+            return bool(self.perms[name])
+        if key in self.perms and isinstance(self.perms[key], bool):
+            return bool(self.perms[key])
+
+        r = (risk or "").strip().lower()
+
+        # Default: allow low-risk tools
+        if r in ("", "low"):
+            return True
+
+        # Allowlist for med/high
+        if name in self.web_allowlist or key in self.web_allowlist:
+            if r == "high":
+                return self.allow_high_risk
+            return True
+
+        # Otherwise block med/high by default
+        if r == "high":
+            return self.allow_high_risk
+        return False
+
+    def _run_tool_flow(self, user_text: str, tool_name: str, args: Dict[str, Any]) -> str:
+        tool_name = (tool_name or "").strip()
+        tool_key = tool_name.lower()
+
+        # Robust registry lookup: try exact, then lower
+        tool = None
+        with suppress(Exception):
+            tool = self.registry.get(tool_name)
+        if tool is None:
+            with suppress(Exception):
+                tool = self.registry.get(tool_key)
+        if tool is None:
+            return f"Sir, unknown tool: {tool_name}"
+
+        # Use canonical name (prefer the registry entry name)
+        canonical_name = getattr(tool, "name", None) or tool_name
+        canonical_key = str(canonical_name).strip().lower()
+
+        if not self._tool_is_allowed(canonical_key, getattr(tool, "risk", "low")):
+            return f"Sir, blocked by permissions: {canonical_key}"
+
+        log_event(self.trace, "tool_call", tool=canonical_key, args=args, risk=tool.risk)
 
         if tool.risk in ("med", "high"):
-            self.security.authorize(f"{tool_name} | {user_text}")
+            self.security.authorize(f"{canonical_key} | {user_text}")
 
         try:
             result = tool.run(args)
         except Exception as e:
-            log_event(self.trace, "tool_error", tool=tool_name, error=str(e))
-            return f"Sir, tool error ({tool_name}): {e}"
+            log_event(self.trace, "tool_error", tool=canonical_key, error=str(e))
+            return f"Sir, tool error ({canonical_key}): {e}"
 
-        log_event(self.trace, "tool_result", tool=tool_name, ok=result.get("ok", True))
+        log_event(self.trace, "tool_result", tool=canonical_key, ok=result.get("ok", True))
 
-        if tool_name == "system.now":
+        if canonical_key == "system.now":
             what = str(args.get("what") or result.get("what") or "datetime").lower()
             return self._format_now(result, what=what)
 
-        if tool_name == "macos.music_control":
+        if canonical_key == "macos.music_control":
             return self._format_music_result(result)
 
         sys_prompt = "Respond in Portuguese (PT-PT). Always address the user as Sir. Use only the tool result. Do not invent."
         msg = (
             f"User request: {user_text}\n"
-            f"Tool: {tool_name}\n"
+            f"Tool: {canonical_key}\n"
             f"Result (JSON): {json.dumps(result, ensure_ascii=False)}"
         )
         return chat(self.model, [{"role": "system", "content": sys_prompt}, {"role": "user", "content": msg}])
