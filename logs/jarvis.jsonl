@@ -1400,3 +1400,62 @@
 {"ts": 1770847950.452019, "trace_id": "ecaec153-2ff6-49b7-90d1-3d81dd00eff9", "event": "user_input", "text": "open mail", "model": "qwen3:4b-instruct"}
 {"ts": 1770847951.957838, "trace_id": "ecaec153-2ff6-49b7-90d1-3d81dd00eff9", "event": "tool_call", "tool": "macos.open_app", "args": {"app": "mail"}, "risk": "med"}
 {"ts": 1770847969.40753, "trace_id": "ecaec153-2ff6-49b7-90d1-3d81dd00eff9", "event": "tool_result", "tool": "macos.open_app", "ok": true}
+{"ts": 1770848995.255129, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "user_input", "text": "jarvis play tuga on shuffle", "model": "qwen3:4b-instruct"}
+{"ts": 1770849000.3056839, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "play tuga on shuffle"}, "risk": "low"}
+{"ts": 1770849000.353077, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770849009.012774, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "user_input", "text": "jarvis skip", "model": "qwen3:4b-instruct"}
+{"ts": 1770849010.902784, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "skip"}, "risk": "low"}
+{"ts": 1770849011.049904, "trace_id": "78d26f4f-f7a7-4b60-be6c-675a955cff0a", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770849415.08096, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "user_input", "text": "hi buddy", "model": "qwen3:4b-instruct"}
+{"ts": 1770849427.919178, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "user_input", "text": "open voice memos", "model": "qwen3:4b-instruct"}
+{"ts": 1770849429.085515, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "tool_call", "tool": "macos.open_app", "args": {"app": "Voice Memos"}, "risk": "med"}
+{"ts": 1770849439.283406, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "tool_result", "tool": "macos.open_app", "ok": false}
+{"ts": 1770849454.6442828, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "user_input", "text": "open the app \"Voice Memos\"", "model": "qwen3:4b-instruct"}
+{"ts": 1770849456.8654342, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "tool_call", "tool": "macos.open_app", "args": {"app": "Voice Memos"}, "risk": "med"}
+{"ts": 1770849456.884264, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "tool_result", "tool": "macos.open_app", "ok": false}
+{"ts": 1770849645.66401, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "user_input", "text": "/help", "model": "qwen3:4b-instruct"}
+{"ts": 1770849677.52961, "trace_id": "f993610b-72d7-48de-bb91-12bc900ce154", "event": "user_input", "text": "/moddel qwen3:8b", "model": "qwen3:4b-instruct"}
+{"ts": 1770850485.628394, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "Hey there buddy", "model": "qwen3:4b-instruct"}
+{"ts": 1770850514.076473, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "I am well jarvis thank you. let's start by opening youtube on google", "model": "qwen3:4b-instruct"}
+{"ts": 1770850515.422077, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.open_url", "args": {"url": "https://www.youtube.com"}, "risk": "low"}
+{"ts": 1770850515.699023, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.open_url", "ok": true}
+{"ts": 1770850537.065969, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis search on amazon torch", "model": "qwen3:4b-instruct"}
+{"ts": 1770850539.739893, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.open_url", "args": {"url": "https://www.amazon.com/s?k=torch"}, "risk": "low"}
+{"ts": 1770850539.870798, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.open_url", "ok": true}
+{"ts": 1770850691.4360142, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis play", "model": "qwen3:4b-instruct"}
+{"ts": 1770850694.598901, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "play"}, "risk": "low"}
+{"ts": 1770850694.926602, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850699.5948641, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis pause", "model": "qwen3:4b-instruct"}
+{"ts": 1770850700.9030058, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "pause"}, "risk": "low"}
+{"ts": 1770850701.056761, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850731.04469, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis do me a favour and play pebble brain", "model": "qwen3:4b-instruct"}
+{"ts": 1770850732.465628, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "pebble brain"}, "risk": "low"}
+{"ts": 1770850732.5141492, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850746.144256, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis pause", "model": "qwen3:4b-instruct"}
+{"ts": 1770850753.3787498, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis pause", "model": "qwen3:4b-instruct"}
+{"ts": 1770850759.792021, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis stop", "model": "qwen3:4b-instruct"}
+{"ts": 1770850761.219282, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "stop"}, "risk": "low"}
+{"ts": 1770850761.518734, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850772.0553951, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis ºlay if you know me", "model": "qwen3:4b-instruct"}
+{"ts": 1770850800.438303, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis play if you knwo me on apple music", "model": "qwen3:4b-instruct"}
+{"ts": 1770850803.027585, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "play if you knwo me on apple music"}, "risk": "low"}
+{"ts": 1770850803.0766048, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850930.8595588, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "jarvis clear the queue", "model": "qwen3:4b-instruct"}
+{"ts": 1770850934.0109608, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "clear queue"}, "risk": "low"}
+{"ts": 1770850934.21221, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770850941.362638, "trace_id": "93c906f3-2c22-48b5-a44a-bd83451e8fa8", "event": "user_input", "text": "clear queue", "model": "qwen3:4b-instruct"}
+{"ts": 1770852172.848744, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "user_input", "text": "lista ficheiros", "model": "qwen3:4b-instruct"}
+{"ts": 1770852176.81359, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_call", "tool": "system.list_dir", "args": {"path": "/"}, "risk": "low"}
+{"ts": 1770852176.814454, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_result", "tool": "system.list_dir", "ok": false}
+{"ts": 1770852185.335409, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "user_input", "text": "weather", "model": "qwen3:4b-instruct"}
+{"ts": 1770852187.3178291, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_call", "tool": "weather.ipma", "args": {"query": "weather"}, "risk": "low"}
+{"ts": 1770852187.639452, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_result", "tool": "weather.ipma", "ok": true}
+{"ts": 1770852272.960705, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "user_input", "text": "jarvis whats the weather like for the 14", "model": "qwen3:4b-instruct"}
+{"ts": 1770852276.9631622, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_call", "tool": "weather.ipma", "args": {"query": "14 de Fevereiro de 2026"}, "risk": "low"}
+{"ts": 1770852277.23867, "trace_id": "bae8d565-74d4-4db1-b732-e3170548f02c", "event": "tool_result", "tool": "weather.ipma", "ok": true}
+{"ts": 1770904878.8247838, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "user_input", "text": "jarvis skip song", "model": "qwen3:4b-instruct"}
+{"ts": 1770904881.783817, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "skip song"}, "risk": "low"}
+{"ts": 1770904881.83418, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "tool_result", "tool": "macos.music_control", "ok": true}
+{"ts": 1770904885.994751, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "user_input", "text": "jarvis skip", "model": "qwen3:4b-instruct"}
+{"ts": 1770904888.742804, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "tool_call", "tool": "macos.music_control", "args": {"query": "skip"}, "risk": "low"}
+{"ts": 1770904888.948969, "trace_id": "ecc4c0e6-cef3-4541-ac28-f639288b29f4", "event": "tool_result", "tool": "macos.music_control", "ok": true}
